@@ -1,24 +1,68 @@
-import React from 'react';
-import logo from './logo.svg';
+import React, { useState } from 'react';
 import './App.css';
 
-const App: React.FC = () => {
+import { API, graphqlOperation } from 'aws-amplify';
+import { createTodo, deleteTodo } from './graphql/mutations';
+
+import { listTodos } from './graphql/queries';
+
+interface IToDo {
+  readonly id: any;
+  readonly name: string;
+  readonly description: string;
+}
+
+function App() {
+  const [todoName, setTodoName] = useState('');
+  const [todoItems, setTodoItems] = useState<IToDo[]>([]);
+
+  const handleChange = (evt: any) => {
+    setTodoName(evt.target.value);
+  };
+
+  const addTodo = async () => {
+    await API.graphql(
+      graphqlOperation(createTodo, { input: { name: todoName } })
+    );
+    setTodoName('');
+
+    updateTodos(); // here it is
+  };
+
+  const handleRemove = async (ev: any) => {
+    await API.graphql(
+      graphqlOperation(deleteTodo, { input: { id: ev.target.id } })
+    );
+
+    updateTodos();
+  };
+
+  const updateTodos = async () => {
+    const allTodos = await API.graphql(graphqlOperation(listTodos));
+    setTodoItems(allTodos.data.listTodos.items);
+  };
+
+  updateTodos();
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div>
+      <div className="App">
+        <input type="text" value={todoName} onChange={handleChange} />
+        <button onClick={addTodo}>Add ToDo</button>
+      </div>
+
+      <ul>
+        {todoItems.map((item: IToDo) => {
+          return (
+            <li key={item.id}>
+              {item.name}{' '}
+              <span id={item.id} onClick={handleRemove}>
+                x
+              </span>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
